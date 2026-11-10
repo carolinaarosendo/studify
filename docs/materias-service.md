@@ -39,7 +39,24 @@ tratar com o feedback do app. A listagem não promete uma ordem específica.
 O serviço não depende do EstudosContext e não implementa sincronização em tempo
 real, telas ou autenticação. Essas integrações continuam com seus responsáveis.
 
-## Validação de integração pendente
+## Validação local realizada em 09/11/2026
+
+O código do serviço foi executado com o SDK Firebase contra os emuladores Auth
+e Firestore, no projeto fictício `demo-studify`, com dois usuários distintos.
+Criar, listar, editar e excluir passaram. A lista própria do segundo usuário
+ficou vazia enquanto o primeiro tinha uma matéria cadastrada.
+
+Foi reproduzida a condição das regras atualmente publicadas no projeto:
+acesso geral permitido antes de 05/12/2026. Com essa condição, o segundo usuário
+conseguiu listar, editar e excluir a matéria do primeiro ao informar o uid dele.
+Portanto, os caminhos por uid não garantem autorização: o isolamento falhou.
+Nenhuma regra, conta ou dado foi alterado no Firebase real durante esses testes.
+
+O grupo precisa revisar as regras para restringir os dados ao usuário dono e
+repetir os testes de acesso entre contas antes de considerar o isolamento pronto.
+Essa alteração das regras não foi incluída no serviço de matérias.
+
+## Validação no app pendente
 
 Com usuário de teste autenticado, executar criar, listar, editar e excluir e
 conferir os documentos no Firestore. Confirmar também que as regras negam
