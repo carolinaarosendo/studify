@@ -1,4 +1,6 @@
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, initializeAuth, type Auth } from 'firebase/auth';
 // @ts-expect-error: esta função só existe no build React Native do Firebase
@@ -17,9 +19,12 @@ const firebaseConfig = {
 const isFirstInit = getApps().length === 0;
 export const app = isFirstInit ? initializeApp(firebaseConfig) : getApp();
 
-// mantém o usuário logado mesmo depois de fechar o app
 export const auth: Auth = isFirstInit
-  ? initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) })
+  ? Platform.OS === 'web'
+    ? getAuth(app)
+    : initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage),
+      })
   : getAuth(app);
 
 export const db = getFirestore(app);
