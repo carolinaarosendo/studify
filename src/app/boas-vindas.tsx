@@ -1,5 +1,5 @@
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   Animated,
   Easing,
@@ -40,8 +40,8 @@ export default function BoasVindas() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const translateX = useRef(new Animated.Value(0)).current;
-  const opacity = useRef(new Animated.Value(1)).current;
+  const [translateX] = useState(() => new Animated.Value(0));
+  const [opacity] = useState(() => new Animated.Value(1));
 
   const isLastSlide = currentSlide === slides.length - 1;
   const slide = slides[currentSlide];

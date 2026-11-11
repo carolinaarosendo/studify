@@ -23,10 +23,9 @@ estado vazio, carregamento, erro, mudança dos dados, destino do botão + e ID
 enviado ao abrir um card. A lista e o estado vazio também foram inspecionados
 visualmente. Os ícones foram substituídos somente no ambiente dessa prévia.
 
-ESLint da tela passou. O lint completo aponta seis ocorrências preexistentes
-de acesso a refs na tela `boas-vindas.tsx`. A checagem TypeScript aponta quatro erros
-preexistentes de tipo de cor em `src/app/(tabs)/_layout.tsx`; não aponta erros
-na tela Matérias.
+ESLint da tela passou. Antes das correções descritas abaixo, o lint completo
+apontava seis ocorrências preexistentes de acesso a refs em `boas-vindas.tsx`,
+e o TypeScript apontava quatro erros de tipo de cor em `(tabs)/_layout.tsx`.
 
 ## Integração local validada em 11/11/2026
 
@@ -68,3 +67,27 @@ e iniciar o Expo com configurações fictícias do Firebase (apiKey `fake-api-ke
 projectId `demo-studify`, authDomain `demo-studify.firebaseapp.com`, appId
 `demo-studify-web`) e a opção acima habilitada. Criar a conta e os dados somente
 nos emuladores. Sem essa opção, a configuração normal do aplicativo é preservada.
+
+## Correções das verificações e tentativa Android em 11/11/2026
+
+As cores dos ícones das abas agora usam a cor do tema como alternativa quando o
+valor recebido não é uma string. As duas instâncias de Animated.Value da tela
+de boas-vindas usam inicialização preguiçosa com useState, preservando os objetos
+entre renderizações sem acessar ref.current durante a renderização.
+
+Após os ajustes, `tsc --noEmit` e ESLint de `src` passaram sem erros.
+
+O Android Studio foi aberto e houve tentativas de iniciar o AVD existente
+`StudyFlow_API36` e um novo AVD de teste `Studify_Teste_API36`, com Android 16/API36
+já instalado. O aparelho antigo não foi apagado. O Studio informou que o perfil
+de hardware antigo não estava mais disponível. Ambos os aparelhos encerraram
+antes de disponibilizar um dispositivo Android no ADB.
+
+O lançamento pela linha de comando apontou indisponibilidade de aceleração
+Hyper-V/WHPX. Pelo Studio, o registro mostrou falha ao carregar opengl32sw,
+tentativa de fallback para OpenGL do sistema e encerramento inesperado do
+Android Emulator 37.2.13. A tentativa com o novo aparelho e GPU host também
+falhou. Não foram alterados recursos de virtualização ou segurança do Windows.
+
+Portanto, o Studify não chegou a executar no Android: a validação nativa segue
+pendente de reparo do ambiente de emulação ou uso de um aparelho físico.
