@@ -1,9 +1,9 @@
-
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { EstudosProvider } from '@/contexts/EstudosContext';
 import { Loading } from '@/components';
 
 function RootNavigator() {
@@ -52,7 +52,9 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootNavigator />
+      <EstudosProvider>
+        <RootNavigator />
+      </EstudosProvider>
     </AuthProvider>
   );
 }
