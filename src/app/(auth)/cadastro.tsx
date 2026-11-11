@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { Button, Input, Screen } from '@/components';
 import { colors, fontSize, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,6 +45,7 @@ export default function Cadastro() {
 
     try {
       await cadastro(email, senha);
+      router.replace('/(auth)/cadastro-sucesso');
     } catch (error: any) {
       console.error('ERRO NO CADASTRO:', error.code, error.message);
       Alert.alert('Não foi possível cadastrar', traduzirErro(error.code));
