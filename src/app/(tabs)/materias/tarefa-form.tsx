@@ -1,4 +1,4 @@
-//Tela responsável por Ana Clara
+//Esta tela é responsável por Ana Clara
 import DateTimePicker, {
   DateTimePickerAndroid,
   type DateTimePickerEvent,

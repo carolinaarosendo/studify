@@ -1,4 +1,4 @@
-//Tela responsável por Ana Clara
+//Esta tela é responsável por Ana Clara
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
