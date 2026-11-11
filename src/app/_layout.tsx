@@ -16,13 +16,15 @@ function RootNavigator() {
 
     const inAuthGroup = segments[0] === '(auth)';
     const inTabsGroup = segments[0] === '(tabs)';
+    const isCadastro = segments[1] === 'cadastro';
+    const isCadastroSucesso = segments[1] === 'cadastro-sucesso';
 
     if (!user && inTabsGroup) {
       router.replace('/(auth)/login');
       return;
     }
 
-    if (user && inAuthGroup) {
+    if (user && inAuthGroup && !isCadastro && !isCadastroSucesso) {
       router.replace('/');
     }
   }, [user, loading, segments, router]);
