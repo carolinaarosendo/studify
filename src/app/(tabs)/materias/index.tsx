@@ -83,28 +83,38 @@ export default function Materias() {
             : `${pendentes} ${pendentes === 1 ? 'tarefa pendente' : 'tarefas pendentes'}`;
 
           return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${materia.nome}. ${textoPendentes}. Abrir matéria.`}
-              onPress={() => router.push({
-                pathname: '/(tabs)/materias/[id]',
-                params: { id: materia.id },
-              })}
-              style={({ pressed }) => pressed && styles.pressionado}
-            >
-              <Card accentColor={materia.cor || DEFAULT_SUBJECT_COLOR}>
-                <Text style={styles.nome}>{materia.nome}</Text>
-                {!!materia.professor && <Text style={styles.detalhe}>{materia.professor}</Text>}
-                {!!(materia.diaSemana || materia.horario) && (
-                  <Text style={styles.detalhe}>
-                    {[materia.diaSemana, materia.horario].filter(Boolean).join(' • ')}
-                  </Text>
-                )}
-                <View style={styles.pendencias}>
-                  <Text style={styles.textoPendencias}>{textoPendentes}</Text>
-                </View>
-              </Card>
-            </Pressable>
+            <Card accentColor={materia.cor || DEFAULT_SUBJECT_COLOR}>
+              <View style={styles.linhaMateria}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${materia.nome}. ${textoPendentes}. Abrir matéria.`}
+                  onPress={() => router.push({
+                    pathname: '/(tabs)/materias/[id]',
+                    params: { id: materia.id },
+                  })}
+                  style={({ pressed }) => [styles.conteudoMateria, pressed && styles.pressionado]}
+                >
+                  <Text style={styles.nome}>{materia.nome}</Text>
+                  {!!materia.professor && <Text style={styles.detalhe}>{materia.professor}</Text>}
+                  {!!(materia.diaSemana || materia.horario) && (
+                    <Text style={styles.detalhe}>
+                      {[materia.diaSemana, materia.horario].filter(Boolean).join(' • ')}
+                    </Text>
+                  )}
+                  <View style={styles.pendencias}>
+                    <Text style={styles.textoPendencias}>{textoPendentes}</Text>
+                  </View>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Editar matéria ${materia.nome}`}
+                  onPress={() => router.push({ pathname: '/(tabs)/materias/materia-form', params: { materiaId: materia.id } })}
+                  style={({ pressed }) => [styles.editar, pressed && styles.pressionado]}
+                >
+                  <Ionicons name="create-outline" size={24} color={colors.primary} />
+                </Pressable>
+              </View>
+            </Card>
           );
         }}
       />
@@ -122,6 +132,9 @@ export default function Materias() {
 }
 
 const styles = StyleSheet.create({
+  linhaMateria: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  conteudoMateria: { flex: 1 },
+  editar: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   limpar: { alignSelf: 'flex-start', minHeight: 48, justifyContent: 'center', marginBottom: spacing.xs },
   lista: { flexGrow: 1, paddingBottom: 88 },
   resumo: { color: colors.textSecondary, fontSize: fontSize.sm, marginBottom: spacing.md },
