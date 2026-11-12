@@ -17,7 +17,7 @@ export default function TabsLayout() {
         options={{
           title: 'Início',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" color={color} size={size} />
+            <Ionicons name="home-outline" color={typeof color === 'string' ? color : colors.textSecondary} size={size} />
           ),
         }}
       />
@@ -27,7 +27,7 @@ export default function TabsLayout() {
           title: 'Matérias',
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book-outline" color={color} size={size} />
+            <Ionicons name="book-outline" color={typeof color === 'string' ? color : colors.textSecondary} size={size} />
           ),
         }}
       />
@@ -36,7 +36,7 @@ export default function TabsLayout() {
         options={{
           title: 'Calendário',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" color={color} size={size} />
+            <Ionicons name="calendar-outline" color={typeof color === 'string' ? color : colors.textSecondary} size={size} />
           ),
         }}
       />
@@ -46,7 +46,7 @@ export default function TabsLayout() {
           title: 'Resumo',
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart-outline" color={color} size={size} />
+            <Ionicons name="stats-chart-outline" color={typeof color === 'string' ? color : colors.textSecondary} size={size} />
           ),
         }}
       />
