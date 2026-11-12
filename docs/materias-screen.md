@@ -91,3 +91,24 @@ falhou. Não foram alterados recursos de virtualização ou segurança do Window
 
 Portanto, o Studify não chegou a executar no Android: a validação nativa segue
 pendente de reparo do ambiente de emulação ou uso de um aparelho físico.
+
+### Diagnóstico adicional em 12/11/2026
+
+O Metro compilou o aplicativo para Android: `Android Bundled` com 1512 módulos.
+Também foi preparado o Expo Go 58.0.5 compatível com o SDK 58.
+
+A consulta direta à API Windows Hypervisor Platform (`WHvGetCapability`)
+retornou `0x80070005` (acesso negado) no processo de diagnóstico. Isso impede
+concluir, com base nessa execução, que os recursos de virtualização estejam
+desativados no computador do usuário.
+
+Foram tentadas inicializações isoladas sem janela gráfica, com SwiftShader e
+sem aceleração de hardware. O emulador expôs um dispositivo offline, mas não
+chegou a disponibilizar o Android para o ADB. Uma cópia separada da versão
+oficial 36.6.11 foi baixada, conferida com o SHA-256 publicado e testada, com o
+mesmo resultado. A instalação original do SDK não foi substituída.
+
+A tentativa de iniciar o emulador instalado pelo desktop ficou dependente da
+aprovação de abertura do Explorador, que expirou. Não foi possível concluir
+o teste de execução Android. Compilação Android bem-sucedida não equivale a
+execução e navegação validadas em Android.
