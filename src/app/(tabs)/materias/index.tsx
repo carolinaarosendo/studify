@@ -1,13 +1,21 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, Loading, Screen } from '@/components';
+import { Card, EmptyState, Input, Loading, Screen } from '@/components';
 import { colors, DEFAULT_SUBJECT_COLOR, fontSize, spacing } from '@/constants/theme';
 import { useEstudos } from '@/hooks/useEstudos';
 
+function normalizarBusca(texto: string) {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('pt-BR');
+}
+
 export default function Materias() {
   const { materias, carregando, erro, pendentesDaMateria } = useEstudos();
+  const [busca, setBusca] = useState('');
+  const termo = normalizarBusca(busca);
+  const materiasFiltradas = materias.filter((materia) => normalizarBusca(materia.nome).includes(termo));
 
   if (carregando) {
     return (
@@ -31,20 +39,41 @@ export default function Materias() {
 
   return (
     <Screen>
+      <Input
+        label="Buscar matéria"
+        accessibilityLabel="Buscar matéria pelo nome"
+        placeholder="Digite o nome da matéria"
+        value={busca}
+        onChangeText={setBusca}
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="search"
+      />
+      {busca.length > 0 && (
+        <Pressable accessibilityRole="button" onPress={() => setBusca('')} style={styles.limpar}>
+          <Text style={styles.textoPendencias}>Limpar busca</Text>
+        </Pressable>
+      )}
       <FlatList
-        data={materias}
+        data={materiasFiltradas}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         keyExtractor={(materia) => materia.id}
         contentContainerStyle={styles.lista}
-        ListHeaderComponent={materias.length > 0 ? (
+        ListHeaderComponent={materiasFiltradas.length > 0 ? (
           <Text style={styles.resumo}>
-            {materias.length} {materias.length === 1 ? 'matéria cadastrada' : 'matérias cadastradas'}
+            {materiasFiltradas.length} {termo
+              ? (materiasFiltradas.length === 1 ? 'matéria encontrada' : 'matérias encontradas')
+              : (materiasFiltradas.length === 1 ? 'matéria cadastrada' : 'matérias cadastradas')}
           </Text>
         ) : undefined}
         ListEmptyComponent={
           <EmptyState
-            icon="book-outline"
-            title="Você ainda não tem matérias"
-            message="Toque no botão + para cadastrar sua primeira matéria."
+            icon={materias.length > 0 ? 'search-outline' : 'book-outline'}
+            title={materias.length > 0 ? 'Nenhuma matéria encontrada' : 'Você ainda não tem matérias'}
+            message={materias.length > 0
+              ? 'Tente outro nome ou limpe a busca para ver todas as matérias.'
+              : 'Toque no botão + para cadastrar sua primeira matéria.'}
           />
         }
         renderItem={({ item: materia }) => {
@@ -93,6 +122,7 @@ export default function Materias() {
 }
 
 const styles = StyleSheet.create({
+  limpar: { alignSelf: 'flex-start', minHeight: 48, justifyContent: 'center', marginBottom: spacing.xs },
   lista: { flexGrow: 1, paddingBottom: 88 },
   resumo: { color: colors.textSecondary, fontSize: fontSize.sm, marginBottom: spacing.md },
   nome: { color: colors.text, fontSize: fontSize.lg, fontWeight: '600' },
