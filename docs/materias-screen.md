@@ -51,7 +51,8 @@ Resultados confirmados pela interface:
 
 Nenhum usuário ou documento foi criado no projeto Firebase real. O estado de
 erro foi verificado na prévia isolada descrita acima; não houve falha de acesso
-do Firestore durante o fluxo integrado. Android/iOS ainda não foram testados.
+do Firestore durante o fluxo integrado. Nessa primeira etapa, Android/iOS ainda
+não tinham sido testados; a validação Android posterior está registrada abaixo.
 As regras permissivas reproduzidas no emulador continuam sendo uma pendência
 separada de segurança; estes testes de tela não comprovam isolamento entre contas.
 
@@ -112,3 +113,40 @@ A tentativa de iniciar o emulador instalado pelo desktop ficou dependente da
 aprovação de abertura do Explorador, que expirou. Não foi possível concluir
 o teste de execução Android. Compilação Android bem-sucedida não equivale a
 execução e navegação validadas em Android.
+
+## Validação Android concluída em 12/11/2026
+
+Na sessão posterior, o aparelho `Studify_Teste_API36` ficou disponível no ADB,
+com Android 16 e `sys.boot_completed=1`. Foi instalado o Expo Go oficial 58.0.5,
+compatível com o SDK 58 do projeto. Não é necessário trocar o SDK do usuário
+para reproduzir esta validação.
+
+O projeto rodou no Android nativo usando AuthContext, EstudosContext e os
+emuladores Firebase locais (`demo-studify`). No Android, o endereço do host
+do Firebase foi `10.0.2.2`, com portas 9099 e 8080. O Metro foi acessado por
+encaminhamento ADB da porta 8088.
+
+Resultados verificados no Android:
+
+- Os três slides de boas-vindas e suas transições funcionaram após a correção.
+- Login com conta fictícia abriu as abas, sem usar autenticação de produção.
+- Matérias mostrou estado vazio antes de receber dados.
+- Três matérias criadas pelo SDK local apareceram automaticamente com contagens
+  de duas, uma e nenhuma pendência, sem contar tarefas já concluídas.
+- Concluir uma tarefa e editar uma matéria pelo banco/serviço local atualizou
+  o nome e a contagem na tela sem recarregar.
+- Tocar no card abriu Detalhe da matéria; o botão Voltar retornou à lista.
+- Tocar no + abriu a rota provisória Formulário de matéria, sem implementar #18.
+- Depois de encerrar o Expo Go e reabrir o endereço raiz do projeto, o usuário
+  continuou logado. Ao abrir Matérias, os dados foram recuperados normalmente.
+- A lista com 12 matérias rolou até o último card. O nome longo quebrou em linhas
+  e não houve sobreposição pelo botão +: o card terminava em y=1935 e o botão
+  começava em y=2019 na captura de 1080 × 2400.
+
+As verificações de atualização, navegação e rolagem também foram conferidas
+na árvore de acessibilidade Android via UI Automator. Foram salvas capturas
+da lista e do fim da rolagem na pasta de resultados da conversa.
+
+O teste nativo do #16 passou neste emulador Android. iOS não foi testado. O
+teste não resolve a pendência separada das regras de segurança do Firestore,
+nem substitui revisão do PR e integração na develop.
