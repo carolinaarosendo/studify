@@ -1,21 +1,48 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { FlatList, Keyboard, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, Input, Loading, Screen } from '@/components';
-import { colors, DEFAULT_SUBJECT_COLOR, fontSize, spacing } from '@/constants/theme';
+import { Button, Card, EmptyState, Input, Loading, Screen } from '@/components';
+import { colors, DEFAULT_SUBJECT_COLOR, fontSize, radius, spacing } from '@/constants/theme';
 import { useEstudos } from '@/hooks/useEstudos';
+import type { Materia } from '@/types';
 
 function normalizarBusca(texto: string) {
   return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('pt-BR');
 }
 
 export default function Materias() {
-  const { materias, carregando, erro, pendentesDaMateria } = useEstudos();
+  const { materias, carregando, erro, pendentesDaMateria, removerMateria } = useEstudos();
   const [busca, setBusca] = useState('');
+  const [paraExcluir, setParaExcluir] = useState<Materia | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const [erroExclusao, setErroExclusao] = useState('');
+  const envioExclusao = useRef(false);
   const termo = normalizarBusca(busca);
   const materiasFiltradas = materias.filter((materia) => normalizarBusca(materia.nome).includes(termo));
+
+  function cancelarExclusao() {
+    if (envioExclusao.current) return;
+    setParaExcluir(null);
+    setErroExclusao('');
+  }
+
+  async function confirmarExclusao() {
+    if (!paraExcluir || envioExclusao.current) return;
+    envioExclusao.current = true;
+    setExcluindo(true);
+    setErroExclusao('');
+    try {
+      await removerMateria(paraExcluir.id);
+      setParaExcluir(null);
+    } catch {
+      setErroExclusao('Não foi possível concluir a exclusão. Algumas tarefas podem já ter sido removidas. Tente novamente.');
+    } finally {
+      envioExclusao.current = false;
+      setExcluindo(false);
+    }
+  }
 
   if (carregando) {
     return (
@@ -105,14 +132,24 @@ export default function Materias() {
                     <Text style={styles.textoPendencias}>{textoPendentes}</Text>
                   </View>
                 </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Editar matéria ${materia.nome}`}
-                  onPress={() => router.push({ pathname: '/(tabs)/materias/materia-form', params: { materiaId: materia.id } })}
-                  style={({ pressed }) => [styles.editar, pressed && styles.pressionado]}
-                >
-                  <Ionicons name="create-outline" size={24} color={colors.primary} />
-                </Pressable>
+                <View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Editar matéria ${materia.nome}`}
+                    onPress={() => router.push({ pathname: '/(tabs)/materias/materia-form', params: { materiaId: materia.id } })}
+                    style={({ pressed }) => [styles.editar, pressed && styles.pressionado]}
+                  >
+                    <Ionicons name="create-outline" size={24} color={colors.primary} />
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Excluir matéria ${materia.nome}`}
+                    onPress={() => { Keyboard.dismiss(); setErroExclusao(''); setParaExcluir(materia); }}
+                    style={({ pressed }) => [styles.editar, pressed && styles.pressionado]}
+                  >
+                    <Ionicons name="trash-outline" size={24} color={colors.danger} />
+                  </Pressable>
+                </View>
               </View>
             </Card>
           );
@@ -127,11 +164,29 @@ export default function Materias() {
       >
         <Ionicons name="add" size={28} color={colors.surface} />
       </Pressable>
+      <Modal visible={paraExcluir !== null} transparent animationType="fade" onRequestClose={cancelarExclusao}>
+        <View style={styles.fundoModal}>
+          <View accessibilityViewIsModal style={styles.dialogo}>
+            <Text accessibilityRole="header" style={styles.tituloDialogo}>Excluir matéria?</Text>
+            <Text style={styles.mensagemDialogo}>
+              {`Excluir "${paraExcluir?.nome ?? ''}" e todas as tarefas e provas vinculadas, incluindo as concluídas? Essa ação não pode ser desfeita.`}
+            </Text>
+            {!!erroExclusao && <Text accessibilityRole="alert" style={styles.erroExclusao}>{erroExclusao}</Text>}
+            <Button title="Cancelar" variant="secondary" disabled={excluindo} onPress={cancelarExclusao} />
+            <Button title="Excluir matéria" variant="danger" loading={excluindo} onPress={confirmarExclusao} />
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  fundoModal: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: spacing.lg },
+  dialogo: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md, width: '100%', maxWidth: 480, alignSelf: 'center' },
+  tituloDialogo: { color: colors.text, fontSize: fontSize.xl, fontWeight: '700' },
+  mensagemDialogo: { color: colors.textSecondary, fontSize: fontSize.md },
+  erroExclusao: { color: colors.danger, fontSize: fontSize.md },
   linhaMateria: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   conteudoMateria: { flex: 1 },
   editar: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
