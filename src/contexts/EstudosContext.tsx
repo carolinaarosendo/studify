@@ -24,6 +24,7 @@ import {
   type DadosMateria,
 } from '@/services/materiasService';
 import type { Materia, Tarefa } from '@/types';
+import { excluirTarefasDaMateria } from '@/services/tarefasService';
 
 // ---------- estado ----------
 
@@ -177,7 +178,12 @@ export function EstudosProvider({ children }: { children: ReactNode }) {
     [exigirUid],
   );
   const removerMateria = useCallback(
-    (materiaId: string) => excluirMateria(exigirUid(), materiaId),
+    async (materiaId: string) => {
+      const usuarioId = exigirUid();
+      // Se a limpeza falhar, a matéria permanece para permitir nova tentativa.
+      await excluirTarefasDaMateria(usuarioId, materiaId);
+      await excluirMateria(usuarioId, materiaId);
+    },
     [exigirUid],
   );
 
