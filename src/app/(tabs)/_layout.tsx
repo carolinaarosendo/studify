@@ -1,7 +1,18 @@
-
+import { colors } from '@/constants/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
-import { colors } from '@/constants/theme';
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+function tabIcon(active: IconName, inactive: IconName) {
+  return ({ color, size, focused }: { color: unknown; size: number; focused: boolean }) => (
+    <Ionicons
+      name={focused ? active : inactive}
+      color={typeof color === 'string' ? color : colors.textSecondary}
+      size={size}
+    />
+  );
+}
 
 export default function TabsLayout() {
   return (
@@ -14,41 +25,19 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{
-          title: 'Início',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" color={typeof color === 'string' ? color : colors.textSecondary} size={size} />
-          ),
-        }}
+        options={{ title: 'Início', tabBarIcon: tabIcon('home', 'home-outline') }}
       />
       <Tabs.Screen
         name="materias"
-        options={{
-          title: 'Matérias',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book-outline" color={typeof color === 'string' ? color : colors.textSecondary} size={size} />
-          ),
-        }}
+        options={{ title: 'Matérias', tabBarIcon: tabIcon('book', 'book-outline') }}
       />
       <Tabs.Screen
         name="calendario"
-        options={{
-          title: 'Calendário',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" color={typeof color === 'string' ? color : colors.textSecondary} size={size} />
-          ),
-        }}
+        options={{ title: 'Calendário', tabBarIcon: tabIcon('calendar', 'calendar-outline') }}
       />
       <Tabs.Screen
         name="resumo"
-        options={{
-          title: 'Resumo',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart-outline" color={typeof color === 'string' ? color : colors.textSecondary} size={size} />
-          ),
-        }}
+        options={{ title: 'Resumo', tabBarIcon: tabIcon('stats-chart', 'stats-chart-outline') }}
       />
     </Tabs>
   );

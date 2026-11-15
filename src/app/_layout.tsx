@@ -1,3 +1,13 @@
+<<<<<<< HEAD
+import { Loading } from '@/components';
+import { colors } from '@/constants/theme';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { EstudosProvider } from '@/contexts/EstudosContext';
+import { ToastProvider } from '@/contexts/ToastContext';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+=======
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -7,6 +17,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { EstudosProvider } from '@/contexts/EstudosContext';
 import { Loading } from '@/components';
 import { configurarNotificacoes } from '@/services/notificacoesService';
+>>>>>>> 386bddfe3addb9e8da2b096e7a980844914e9f59
 
 function RootNavigator() {
   const { user, loading } = useAuth();
@@ -61,10 +72,12 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <EstudosProvider>
-        <RootNavigator />
-      </EstudosProvider>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <EstudosProvider>
+          <RootNavigator />
+        </EstudosProvider>
+      </AuthProvider>
+    </ToastProvider>
   );
 }
