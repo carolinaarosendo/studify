@@ -1,3 +1,4 @@
+
 import {
   createContext,
   useContext,
@@ -10,6 +11,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
+  updateProfile,
   type User,
 } from 'firebase/auth';
 import { auth } from '@/services/firebase';
@@ -18,7 +20,12 @@ type AuthContextData = {
   user: User | null;
   loading: boolean;
   login: (email: string, senha: string) => Promise<void>;
-  cadastro: (email: string, senha: string) => Promise<void>;
+  cadastro: (
+    email: string,
+    senha: string,
+    nome: string,
+    sobrenome: string
+  ) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -41,8 +48,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithEmailAndPassword(auth, email.trim(), senha);
   }
 
-  async function cadastro(email: string, senha: string) {
-    await createUserWithEmailAndPassword(auth, email.trim(), senha);
+  async function cadastro(
+    email: string,
+    senha: string,
+    nome: string,
+    sobrenome: string
+  ) {
+    const credencial = await createUserWithEmailAndPassword(
+      auth,
+      email.trim(),
+      senha
+    );
+
+    const nomeCompleto = `${nome.trim()} ${sobrenome.trim()}`;
+
+    await updateProfile(credencial.user, {
+      displayName: nomeCompleto,
+    });
+
+    setUser(credencial.user);
   }
 
   async function logout() {

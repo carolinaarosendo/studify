@@ -11,13 +11,25 @@ export default function AuthLayout() {
   }
 
   if (user) {
-    return <Redirect href="/(tabs)" />;
+    return <Redirect href="/" />;
   }
 
   return (
     <Stack>
-      <Stack.Screen name="login" options={{ title: 'Entrar', headerShown: false }} />
-      <Stack.Screen name="cadastro" options={{ title: 'Criar conta' }} />
+      <Stack.Screen
+        name="login"
+        options={{
+          title: 'Entrar',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="cadastro"
+        options={{
+          title: 'Criar conta',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
