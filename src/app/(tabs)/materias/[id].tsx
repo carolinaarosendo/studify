@@ -9,6 +9,7 @@ import { Card, EmptyState, Loading, Screen } from '@/components';
 import { colors, DEFAULT_SUBJECT_COLOR, fontSize, radius, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEstudos } from '@/hooks/useEstudos';
+import { cancelarLembrete } from '@/services/notificacoesService';
 import { concluirTarefa, excluirTarefa } from '@/services/tarefasService';
 import type { Tarefa } from '@/types';
 import { formatarDataHora } from '@/utils/datas';
@@ -40,6 +41,10 @@ export default function DetalheMateria() {
     if (!user) return;
     try {
       await concluirTarefa(user.uid, tarefa.id, !tarefa.concluida);
+      // Notificação (Luiza Eduarda): prova concluída não precisa mais de lembrete
+      if (!tarefa.concluida && tarefa.tipo === 'prova') {
+        await cancelarLembrete(tarefa.notificacaoId);
+      }
     } catch {
       Alert.alert('Não foi possível atualizar', 'Tente novamente em instantes.');
     }
@@ -55,6 +60,8 @@ export default function DetalheMateria() {
           if (!user) return;
           try {
             await excluirTarefa(user.uid, tarefa.id);
+            // Notificação (Luiza Eduarda): cancela o lembrete da tarefa excluída
+            await cancelarLembrete(tarefa.notificacaoId);
           } catch {
             Alert.alert('Não foi possível excluir', 'Tente novamente em instantes.');
           }
