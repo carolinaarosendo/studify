@@ -5,6 +5,7 @@ import { Link } from 'expo-router';
 import { Button, Input, Screen } from '@/components';
 import { colors, fontSize, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 
 function traduzirErro(codigo: string) {
   const erros: Record<string, string> = {
@@ -20,13 +21,23 @@ function traduzirErro(codigo: string) {
 
 export default function Cadastro() {
   const { cadastro } = useAuth();
+  const { showSuccessScreen } = useToast();
+
+  const [nome, setNome] = useState('');
+  const [sobrenome, setSobrenome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleCadastro() {
-    if (!email.trim() || !senha || !confirmarSenha) {
+    if (
+      !nome.trim() ||
+      !sobrenome.trim() ||
+      !email.trim() ||
+      !senha ||
+      !confirmarSenha
+    ) {
       Alert.alert('Atenção', 'Preencha todos os campos.');
       return;
     }
@@ -44,7 +55,12 @@ export default function Cadastro() {
     setLoading(true);
 
     try {
-      await cadastro(email, senha);
+      await cadastro(email, senha, nome, sobrenome);
+
+      showSuccessScreen(
+        'Cadastro realizado!',
+        'Sua conta foi criada com sucesso. Prepare-se para organizar seus estudos!'
+      );
     } catch (error: any) {
       console.error('ERRO NO CADASTRO:', error.code, error.message);
       Alert.alert('Não foi possível cadastrar', traduzirErro(error.code));
@@ -65,6 +81,22 @@ export default function Cadastro() {
         </View>
 
         <View style={styles.form}>
+          <Input
+            label="Nome"
+            placeholder="Digite seu nome"
+            value={nome}
+            onChangeText={setNome}
+            autoCapitalize="words"
+          />
+
+          <Input
+            label="Sobrenome"
+            placeholder="Digite seu sobrenome"
+            value={sobrenome}
+            onChangeText={setSobrenome}
+            autoCapitalize="words"
+          />
+
           <Input
             label="E-mail"
             placeholder="seuemail@exemplo.com"

@@ -12,29 +12,51 @@ export default function Index() {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
 
   useEffect(() => {
+    let ativo = true;
+
     async function verificarBoasVindas() {
-      try {
-        const completed = await AsyncStorage.getItem(ONBOARDING_KEY);
-        setOnboardingCompleted(completed === 'true');
-      } catch {
+      if (loading) return;
+
+      if (!user) {
         setOnboardingCompleted(false);
+        return;
+      }
+
+      setOnboardingCompleted(null);
+
+      try {
+        const completed = await AsyncStorage.getItem(
+          `${ONBOARDING_KEY}:${user.uid}`
+        );
+
+        if (ativo) {
+          setOnboardingCompleted(completed === 'true');
+        }
+      } catch {
+        if (ativo) {
+          setOnboardingCompleted(false);
+        }
       }
     }
 
     verificarBoasVindas();
-  }, []);
 
-  if (loading || onboardingCompleted === null) {
+    return () => {
+      ativo = false;
+    };
+  }, [user?.uid, loading]);
+
+  if (loading || (user && onboardingCompleted === null)) {
     return <Loading message="Preparando o Studify..." />;
+  }
+
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
   }
 
   if (!onboardingCompleted) {
     return <Redirect href="/boas-vindas" />;
   }
 
-  if (user) {
-    return <Redirect href="/(tabs)" />;
-  }
-
-  return <Redirect href="/(auth)/login" />;
+  return <Redirect href="/(tabs)" />;
 }

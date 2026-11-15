@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -12,6 +12,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Screen } from '@/components';
 import { colors, fontSize, spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ONBOARDING_KEY = '@studify:onboarding-completed';
 
@@ -37,35 +38,55 @@ const slides = [
 ];
 
 export default function BoasVindas() {
+  const { user } = useAuth();
+
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const [translateX] = useState(() => new Animated.Value(0));
   const [opacity] = useState(() => new Animated.Value(1));
 
+  const animating = useRef(false);
+
   const isLastSlide = currentSlide === slides.length - 1;
-  const slide = slides[currentSlide];
+  const slide = slides[currentSlide] ?? slides[0];
 
   async function finalizar() {
-    if (loading) return;
+    if (loading || animating.current) return;
 
+    if (!user) {
+      router.replace('/(auth)/login');
+      return;
+    }
+
+    animating.current = true;
     setLoading(true);
 
+    translateX.stopAnimation();
+    opacity.stopAnimation();
+
     try {
-      await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+      await AsyncStorage.setItem(
+        `${ONBOARDING_KEY}:${user.uid}`,
+        'true'
+      );
+
       router.replace('/');
     } catch {
       setLoading(false);
+      animating.current = false;
     }
   }
 
   function avancar() {
-    if (loading) return;
+    if (loading || animating.current) return;
 
     if (isLastSlide) {
       finalizar();
       return;
     }
+
+    animating.current = true;
 
     Animated.parallel([
       Animated.timing(translateX, {
@@ -79,8 +100,16 @@ export default function BoasVindas() {
         duration: 160,
         useNativeDriver: true,
       }),
-    ]).start(() => {
-      setCurrentSlide((previous) => previous + 1);
+    ]).start(({ finished }) => {
+      if (!finished) {
+        animating.current = false;
+        return;
+      }
+
+      setCurrentSlide((previous) =>
+        Math.min(previous + 1, slides.length - 1)
+      );
+
       translateX.setValue(45);
 
       Animated.parallel([
@@ -95,7 +124,11 @@ export default function BoasVindas() {
           duration: 300,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(({ finished: entranceFinished }) => {
+        if (entranceFinished) {
+          animating.current = false;
+        }
+      });
     });
   }
 
