@@ -8,13 +8,17 @@ import {
 } from 'react';
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
   updateProfile,
   type User,
 } from 'firebase/auth';
 import { auth } from '@/services/firebase';
+import { formatarTexto, normalizarEmail } from '@/utils/formatarTexto';
 
 type AuthContextData = {
   user: User | null;
@@ -25,6 +29,11 @@ type AuthContextData = {
     senha: string,
     nome: string,
     sobrenome: string
+  ) => Promise<void>;
+  atualizarNome: (nome: string, sobrenome: string) => Promise<void>;
+  alterarSenha: (
+    senhaAtual: string,
+    novaSenha: string
   ) => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -45,7 +54,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function login(email: string, senha: string) {
-    await signInWithEmailAndPassword(auth, email.trim(), senha);
+    await signInWithEmailAndPassword(
+      auth,
+      normalizarEmail(email),
+      senha
+    );
   }
 
   async function cadastro(
@@ -56,11 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) {
     const credencial = await createUserWithEmailAndPassword(
       auth,
-      email.trim(),
+      normalizarEmail(email),
       senha
     );
 
-    const nomeCompleto = `${nome.trim()} ${sobrenome.trim()}`;
+    const nomeCompleto = `${formatarTexto(nome)} ${formatarTexto(sobrenome)}`;
 
     await updateProfile(credencial.user, {
       displayName: nomeCompleto,
@@ -69,12 +82,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(credencial.user);
   }
 
+  async function atualizarNome(nome: string, sobrenome: string) {
+    const usuario = auth.currentUser;
+
+    if (!usuario) {
+      throw new Error('Nenhum usuário autenticado.');
+    }
+
+    const nomeCompleto = `${formatarTexto(nome)} ${formatarTexto(sobrenome)}`;
+
+    await updateProfile(usuario, {
+      displayName: nomeCompleto,
+    });
+
+    setUser(
+      Object.assign(
+        Object.create(Object.getPrototypeOf(usuario)),
+        usuario
+      )
+    );
+  }
+
+  async function alterarSenha(
+    senhaAtual: string,
+    novaSenha: string
+  ) {
+    const usuario = auth.currentUser;
+
+    if (!usuario || !usuario.email) {
+      throw new Error('Nenhum usuário autenticado.');
+    }
+
+    const credencial = EmailAuthProvider.credential(
+      usuario.email,
+      senhaAtual
+    );
+
+    await reauthenticateWithCredential(usuario, credencial);
+    await updatePassword(usuario, novaSenha);
+  }
+
   async function logout() {
     await signOut(auth);
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, cadastro, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        cadastro,
+        atualizarNome,
+        alterarSenha,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

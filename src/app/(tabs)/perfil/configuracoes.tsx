@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Card, Screen } from '@/components';
 import { colors, fontSize, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +23,7 @@ import {
 const opcoesAntecedencia = [5, 15, 30, 60];
 
 export default function Configuracoes() {
+  const router = useRouter();
   const { user } = useAuth();
   const { tarefas, materias, carregando } = useEstudos();
 
@@ -123,6 +125,18 @@ export default function Configuracoes() {
           <Text style={styles.valor}>
             {user?.email ?? 'Não disponível'}
           </Text>
+        </Card>
+
+        <Card onPress={() => router.push('/perfil/alterar-senha')}>
+          <View style={styles.linha}>
+            <View style={styles.textos}>
+              <Text style={styles.valor}>Alterar senha</Text>
+              <Text style={styles.descricao}>
+                Atualize a senha de acesso à sua conta.
+              </Text>
+            </View>
+            <Text style={styles.seta}>›</Text>
+          </View>
         </Card>
 
         <Text style={styles.secao}>Notificações</Text>
@@ -242,6 +256,10 @@ const styles = StyleSheet.create({
   textos: {
     flex: 1,
     gap: spacing.xs,
+  },
+  seta: {
+    fontSize: 28,
+    color: colors.textSecondary,
   },
   opcoes: {
     flexDirection: 'row',

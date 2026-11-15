@@ -1,4 +1,3 @@
-//Esta tela é responsável por Ana Clara
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
@@ -29,7 +28,6 @@ export default function Calendario() {
   const { tarefas, buscarMateria, carregando, erro } = useEstudos();
   const [diaSelecionado, setDiaSelecionado] = useState(() => chaveDoDia(new Date()));
 
-  // provas agrupadas por dia ('YYYY-MM-DD')
   const provasPorDia = useMemo(() => {
     const mapa: Record<string, Tarefa[]> = {};
     for (const tarefa of tarefas) {
@@ -100,15 +98,18 @@ export default function Calendario() {
         }
         renderItem={({ item }) => {
           const materia = buscarMateria(item.materiaId);
+          const atrasada = !item.concluida && item.prazo.getTime() < Date.now();
+
           return (
             <Card
               accentColor={materia?.cor || DEFAULT_SUBJECT_COLOR}
-              onPress={() => router.push({ pathname: '/materias/[id]', params: { id: item.materiaId } })}>
+              onPress={() => router.push({ pathname: '/materias/[id]', params: { id: item.materiaId } })}
+            >
               <View style={styles.linha}>
                 <Ionicons name="school-outline" size={22} color={colors.danger} />
                 <View style={styles.conteudo}>
                   <Text style={[styles.titulo, item.concluida && styles.concluida]}>{item.titulo}</Text>
-                  <Text style={styles.detalhe}>
+                  <Text style={[styles.detalhe, atrasada && styles.dataAtrasada]}>
                     {materia?.nome ?? 'Matéria removida'} · {formatarHora(item.prazo)}
                   </Text>
                   {!!item.observacao && <Text style={styles.detalhe}>{item.observacao}</Text>}
@@ -138,4 +139,5 @@ const styles = StyleSheet.create({
   titulo: { fontSize: fontSize.md, fontWeight: '600', color: colors.text },
   concluida: { textDecorationLine: 'line-through', color: colors.textSecondary },
   detalhe: { fontSize: fontSize.sm, color: colors.textSecondary },
+  dataAtrasada: { color: colors.danger },
 });
