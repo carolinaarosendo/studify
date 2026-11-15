@@ -1,16 +1,29 @@
+
 import {
-  addDoc, collection, deleteDoc, doc, getDocs, query, Timestamp,
-  updateDoc, where, writeBatch, type DocumentData,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  Timestamp,
+  updateDoc,
+  where,
+  writeBatch,
+  type DocumentData,
 } from 'firebase/firestore';
 
 import type { Tarefa } from '../types';
 import { db } from './firebase';
 
-// Campos que o formulário (#23) preenche; id, concluida e notificacaoId não vêm do formulário.
 export type DadosTarefa = Omit<Tarefa, 'id' | 'concluida' | 'notificacaoId'>;
 
 function validarId(valor: string, campo: string): void {
-  if (typeof valor !== 'string' || !valor.trim() || valor.includes('/')) {
+  if (
+    typeof valor !== 'string' ||
+    !valor.trim() ||
+    valor.includes('/')
+  ) {
     throw new Error(`${campo} inválido.`);
   }
 }
@@ -25,26 +38,78 @@ function referenciaTarefa(uid: string, tarefaId: string) {
   return doc(tarefasDoUsuario(uid), tarefaId);
 }
 
-// Valida e monta apenas os campos do formulário (prazo vira Timestamp).
-// A regra "prazo no passado" fica no formulário, para permitir editar tarefas antigas.
 function prepararDados(dados: DadosTarefa) {
   validarId(dados?.materiaId, 'ID da matéria');
+
   if (typeof dados.titulo !== 'string' || !dados.titulo.trim()) {
     throw new Error('O título é obrigatório.');
   }
+
   if (dados.tipo !== 'tarefa' && dados.tipo !== 'prova') {
     throw new Error('Tipo inválido.');
   }
-  if (!(dados.prazo instanceof Date) || Number.isNaN(dados.prazo.getTime())) {
+
+  if (
+    !(dados.prazo instanceof Date) ||
+    Number.isNaN(dados.prazo.getTime())
+  ) {
     throw new Error('Data inválida.');
   }
+
   return {
     materiaId: dados.materiaId,
     titulo: dados.titulo.trim(),
     tipo: dados.tipo,
     prazo: Timestamp.fromDate(dados.prazo),
-    observacao: (dados.observacao ?? '').trim(), // Firestore não aceita undefined
+    observacao: (dados.observacao ?? '').trim(),
   };
+}
+
+function normalizarTitulo(titulo: string): string {
+  return titulo
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+async function verificarDuplicidade(
+  uid: string,
+  dados: DadosTarefa,
+  tarefaIdAtual?: string,
+): Promise<void> {
+  const consulta = query(
+    tarefasDoUsuario(uid),
+    where('materiaId', '==', dados.materiaId),
+  );
+
+  const resultado = await getDocs(consulta);
+
+  const tituloNovo = normalizarTitulo(dados.titulo);
+  const prazoNovo = dados.prazo.getTime();
+
+  const duplicada = resultado.docs.some((documento) => {
+    if (documento.id === tarefaIdAtual) {
+      return false;
+    }
+
+    const existente = documento.data();
+
+    return (
+      normalizarTitulo(existente.titulo) === tituloNovo &&
+      existente.tipo === dados.tipo &&
+      existente.materiaId === dados.materiaId &&
+      existente.prazo instanceof Timestamp &&
+      existente.prazo.toMillis() === prazoNovo
+    );
+  });
+
+  if (duplicada) {
+    throw new Error(
+      'Já existe uma tarefa ou prova com esse título, matéria, data e horário.',
+    );
+  }
 }
 
 function paraTarefa(id: string, d: DocumentData): Tarefa {
@@ -60,10 +125,20 @@ function paraTarefa(id: string, d: DocumentData): Tarefa {
   };
 }
 
-export async function criarTarefa(uid: string, dados: DadosTarefa): Promise<Tarefa> {
+export async function criarTarefa(
+  uid: string,
+  dados: DadosTarefa,
+): Promise<Tarefa> {
   const referencia = tarefasDoUsuario(uid);
   const preparados = prepararDados(dados);
-  const documento = await addDoc(referencia, { ...preparados, concluida: false });
+
+  await verificarDuplicidade(uid, dados);
+
+  const documento = await addDoc(referencia, {
+    ...preparados,
+    concluida: false,
+  });
+
   return {
     id: documento.id,
     materiaId: preparados.materiaId,
@@ -75,43 +150,75 @@ export async function criarTarefa(uid: string, dados: DadosTarefa): Promise<Tare
   };
 }
 
-export async function listarPorMateria(uid: string, materiaId: string): Promise<Tarefa[]> {
+export async function listarPorMateria(
+  uid: string,
+  materiaId: string,
+): Promise<Tarefa[]> {
   validarId(materiaId, 'ID da matéria');
-  const consulta = query(tarefasDoUsuario(uid), where('materiaId', '==', materiaId));
-  const resultado = await getDocs(consulta);
-  return resultado.docs
-    .map((d) => paraTarefa(d.id, d.data()))
-    .sort((a, b) => a.prazo.getTime() - b.prazo.getTime()); // ordena aqui: evita criar índice no Firestore
-}
 
-/** Lista todas as tarefas do usuário (útil para Início, Calendário e Resumo). */
-export async function listarTarefas(uid: string): Promise<Tarefa[]> {
-  const resultado = await getDocs(tarefasDoUsuario(uid));
+  const consulta = query(
+    tarefasDoUsuario(uid),
+    where('materiaId', '==', materiaId),
+  );
+
+  const resultado = await getDocs(consulta);
+
   return resultado.docs
     .map((d) => paraTarefa(d.id, d.data()))
     .sort((a, b) => a.prazo.getTime() - b.prazo.getTime());
 }
 
-/** Edita os campos do formulário; não altera concluida nem notificacaoId. */
-export async function editarTarefa(uid: string, tarefaId: string, dados: DadosTarefa): Promise<void> {
-  const referencia = referenciaTarefa(uid, tarefaId);
-  await updateDoc(referencia, prepararDados(dados));
+export async function listarTarefas(uid: string): Promise<Tarefa[]> {
+  const resultado = await getDocs(tarefasDoUsuario(uid));
+
+  return resultado.docs
+    .map((d) => paraTarefa(d.id, d.data()))
+    .sort((a, b) => a.prazo.getTime() - b.prazo.getTime());
 }
 
-export async function concluirTarefa(uid: string, tarefaId: string, concluida = true): Promise<void> {
+export async function editarTarefa(
+  uid: string,
+  tarefaId: string,
+  dados: DadosTarefa,
+): Promise<void> {
+  const referencia = referenciaTarefa(uid, tarefaId);
+  const preparados = prepararDados(dados);
+
+  await verificarDuplicidade(uid, dados, tarefaId);
+
+  await updateDoc(referencia, preparados);
+}
+
+export async function concluirTarefa(
+  uid: string,
+  tarefaId: string,
+  concluida = true,
+): Promise<void> {
   await updateDoc(referenciaTarefa(uid, tarefaId), { concluida });
 }
 
-export async function excluirTarefa(uid: string, tarefaId: string): Promise<void> {
+export async function excluirTarefa(
+  uid: string,
+  tarefaId: string,
+): Promise<void> {
   await deleteDoc(referenciaTarefa(uid, tarefaId));
 }
 
-/** Para a integração: apaga as tarefas de uma matéria quando ela for excluída. */
-export async function excluirTarefasDaMateria(uid: string, materiaId: string): Promise<void> {
+export async function excluirTarefasDaMateria(
+  uid: string,
+  materiaId: string,
+): Promise<void> {
   validarId(materiaId, 'ID da matéria');
-  const consulta = query(tarefasDoUsuario(uid), where('materiaId', '==', materiaId));
+
+  const consulta = query(
+    tarefasDoUsuario(uid),
+    where('materiaId', '==', materiaId),
+  );
+
   const resultado = await getDocs(consulta);
   const lote = writeBatch(db);
+
   resultado.docs.forEach((d) => lote.delete(d.ref));
+
   await lote.commit();
 }

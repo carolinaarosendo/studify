@@ -1,110 +1,81 @@
-import { Button, Card } from '@/components';
+
+import { Card } from '@/components';
 import { colors, fontSize, radius, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/contexts/ToastContext';
 import { useEstudos } from '@/hooks/useEstudos';
-import { criarMateria } from '@/services/materiasService';
-import { concluirTarefa, criarTarefa } from '@/services/tarefasService';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 
-function diasRestantes(prazo: Date) {
-  const agora = new Date();
-  const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).getTime();
+function diasRestantes(prazo: Date, agora: Date) {
   const p = new Date(prazo);
-  const inicioPrazo = new Date(p.getFullYear(), p.getMonth(), p.getDate()).getTime();
+
+  if (p.getTime() < agora.getTime()) return 'Atrasada';
+
+  const inicioHoje = new Date(
+    agora.getFullYear(),
+    agora.getMonth(),
+    agora.getDate(),
+  ).getTime();
+
+  const inicioPrazo = new Date(
+    p.getFullYear(),
+    p.getMonth(),
+    p.getDate(),
+  ).getTime();
+
   const dias = Math.round((inicioPrazo - inicioHoje) / DIA_MS);
-  if (dias <= 0) return 'Hoje';
+
+  if (dias === 0) return 'Hoje';
   if (dias === 1) return 'Amanhã';
+
   return `Em ${dias} dias`;
 }
 
-// Data relativa a hoje: emDias(2, 19) = daqui a 2 dias às 19:00
-function emDias(dias: number, hora: number, minuto = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + dias);
-  d.setHours(hora, minuto, 0, 0);
-  return d;
-}
-
 export default function ResumoScreen() {
-  const { materias, tarefas } = useEstudos();
+  const { materias, tarefas, carregando } = useEstudos();
   const { user } = useAuth();
-  const { showToast } = useToast();
-  const [carregandoExemplo, setCarregandoExemplo] = useState(false);
 
-  async function carregarDadosExemplo() {
-    if (!user) {
-      showToast('Faça login primeiro.', 'error');
-      return;
-    }
-    setCarregandoExemplo(true);
-    try {
-      const mobile = await criarMateria(user.uid, {
-        nome: 'Dispositivos Móveis',
-        professor: 'Prof. Carlos',
-        cor: '#5C6BC0',
-        diaSemana: 'Segunda',
-        horario: '19:00',
-      });
-      const bd = await criarMateria(user.uid, {
-        nome: 'Banco de Dados',
-        professor: 'Profa. Marina',
-        cor: '#26A69A',
-        diaSemana: 'Terça',
-        horario: '19:00',
-      });
-      const es = await criarMateria(user.uid, {
-        nome: 'Engenharia de Software',
-        professor: 'Prof. Ricardo',
-        cor: '#EF6C00',
-        diaSemana: 'Quarta',
-        horario: '21:00',
-      });
+  const [agora, setAgora] = useState(() => new Date());
 
-      const exemplos = [
-        { materiaId: mobile.id, titulo: 'Entrega do app Studify', tipo: 'tarefa' as const, prazo: emDias(1, 19), concluida: false },
-        { materiaId: mobile.id, titulo: 'Lista de exercícios 3', tipo: 'tarefa' as const, prazo: emDias(-3, 23), concluida: true },
-        { materiaId: bd.id, titulo: 'Prova 2', tipo: 'prova' as const, prazo: emDias(2, 19), concluida: false },
-        { materiaId: bd.id, titulo: 'Modelagem do projeto', tipo: 'tarefa' as const, prazo: emDias(4, 23), concluida: false },
-        { materiaId: es.id, titulo: 'Prova final', tipo: 'prova' as const, prazo: emDias(4, 21), concluida: false },
-        { materiaId: es.id, titulo: 'Diagrama UML', tipo: 'tarefa' as const, prazo: emDias(-5, 23), concluida: true },
-      ];
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      setAgora(new Date());
+    }, 30000);
 
-      for (const { concluida, ...dados } of exemplos) {
-        const criada = await criarTarefa(user.uid, dados);
-        if (concluida) await concluirTarefa(user.uid, criada.id, true);
-      }
+    return () => clearInterval(intervalo);
+  }, []);
 
-      showToast('Dados de exemplo carregados!');
-    } catch (erro) {
-      console.error(erro);
-      showToast('Erro ao carregar dados de exemplo.', 'error');
-    } finally {
-      setCarregandoExemplo(false);
-    }
-  }
+  const primeiroNome =
+    user?.displayName?.trim().split(/\s+/)[0] || 'estudante';
 
   const dados = useMemo(() => {
-    const agora = new Date();
-    const limite = new Date(agora.getTime() + 7 * DIA_MS);
-
-    const concluidas = tarefas.filter(t => t.concluida).length;
+    const concluidas = tarefas.filter((t) => t.concluida).length;
     const pendentes = tarefas.length - concluidas;
+    const percentualGeral = tarefas.length
+      ? concluidas / tarefas.length
+      : 0;
 
-    const provasProximas = tarefas
-      .filter(t => {
-        const prazo = new Date(t.prazo);
-        return t.tipo === 'prova' && !t.concluida && prazo >= agora && prazo <= limite;
-      })
-      .sort((a, b) => new Date(a.prazo).getTime() - new Date(b.prazo).getTime());
+    const compromissos = tarefas
+      .filter((t) => !t.concluida)
+      .sort(
+        (a, b) =>
+          new Date(a.prazo).getTime() -
+          new Date(b.prazo).getTime(),
+      );
 
-    const progresso = materias.map(m => {
-      const daMateria = tarefas.filter(t => t.materiaId === m.id);
-      const feitas = daMateria.filter(t => t.concluida).length;
+    const progresso = materias.map((m) => {
+      const daMateria = tarefas.filter((t) => t.materiaId === m.id);
+      const feitas = daMateria.filter((t) => t.concluida).length;
+
       return {
         ...m,
         total: daMateria.length,
@@ -113,120 +84,286 @@ export default function ResumoScreen() {
       };
     });
 
-    const nomePorId = new Map(materias.map(m => [m.id, m.nome]));
+    const nomePorId = new Map(materias.map((m) => [m.id, m.nome]));
 
-    return { concluidas, pendentes, provasProximas, progresso, nomePorId };
+    return {
+      concluidas,
+      pendentes,
+      total: tarefas.length,
+      percentualGeral,
+      compromissos,
+      progresso,
+      nomePorId,
+    };
   }, [materias, tarefas]);
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      {__DEV__ && (
-        <Button
-          title="Carregar dados de exemplo"
-          icon="cloud-upload"
-          variant="secondary"
-          loading={carregandoExemplo}
-          onPress={carregarDadosExemplo}
-        />
-      )}
-
-      <View style={styles.row}>
-        <Card>
-          <View style={styles.stat}>
-            <Ionicons name="checkmark-circle" size={28} color="#2E7D32" />
-            <Text style={styles.number}>{dados.concluidas}</Text>
-            <Text style={styles.muted}>Concluídas</Text>
-          </View>
-        </Card>
-        <Card>
-          <View style={styles.stat}>
-            <Ionicons name="time" size={28} color="#EF6C00" />
-            <Text style={styles.number}>{dados.pendentes}</Text>
-            <Text style={styles.muted}>Pendentes</Text>
-          </View>
-        </Card>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+    >
+      <View style={styles.header}>
+        <Text style={styles.greeting}>Olá, {primeiroNome}! 👋</Text>
+        <Text style={styles.subtitle}>
+          Confira como está sua rotina de estudos.
+        </Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Provas nos próximos 7 dias</Text>
-      {dados.provasProximas.length === 0 ? (
-        <Card>
-          <View style={styles.emptyRow}>
-            <Ionicons name="happy-outline" size={22} color={colors.textSecondary} />
-            <Text style={styles.muted}>Nenhuma prova nesta semana.</Text>
-          </View>
-        </Card>
+      {carregando ? (
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.muted}>Carregando seus dados...</Text>
+        </View>
       ) : (
-        dados.provasProximas.map(p => (
-          <Card key={p.id}>
-            <View style={styles.provaRow}>
-              <Ionicons name="school" size={22} color={colors.danger} />
-              <View style={styles.flex}>
-                <Text style={styles.bold}>{p.titulo}</Text>
-                <Text style={styles.muted}>
-                  {dados.nomePorId.get(p.materiaId) ?? 'Matéria'} ·{' '}
-                  {new Date(p.prazo).toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                  })}{' '}
-                  às{' '}
-                  {new Date(p.prazo).toLocaleTimeString('pt-BR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
+        <>
+          <View style={styles.row}>
+            <Card>
+              <View style={styles.stat}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={28}
+                  color={colors.success}
+                />
+                <Text style={styles.number}>{dados.concluidas}</Text>
+                <Text style={styles.muted}>Concluídas</Text>
               </View>
-              <Text style={styles.badge}>{diasRestantes(p.prazo)}</Text>
-            </View>
-          </Card>
-        ))
-      )}
+            </Card>
 
-      <Text style={styles.sectionTitle}>Progresso por matéria</Text>
-      {dados.progresso.length === 0 ? (
-        <Card>
-          <View style={styles.emptyRow}>
-            <Ionicons name="book-outline" size={22} color={colors.textSecondary} />
-            <Text style={styles.muted}>Cadastre matérias para acompanhar o progresso.</Text>
+            <Card>
+              <View style={styles.stat}>
+                <Ionicons
+                  name="time"
+                  size={28}
+                  color={colors.warning}
+                />
+                <Text style={styles.number}>{dados.pendentes}</Text>
+                <Text style={styles.muted}>Pendentes</Text>
+              </View>
+            </Card>
           </View>
-        </Card>
-      ) : (
-        dados.progresso.map(m => (
-          <Card key={m.id}>
+
+          <Text style={styles.sectionTitle}>Progresso geral</Text>
+
+          <Card>
             <View style={styles.progressHeader}>
-              <Text style={styles.bold}>{m.nome}</Text>
+              <Text style={styles.bold}>Tarefas concluídas</Text>
+
               <Text style={styles.muted}>
-                {m.feitas}/{m.total} ({Math.round(m.pct * 100)}%)
+                {dados.concluidas}/{dados.total} (
+                {Math.round(dados.percentualGeral * 100)}%)
               </Text>
             </View>
+
             <View style={styles.barBg}>
               <View
                 style={[
                   styles.barFill,
-                  { width: `${m.pct * 100}%`, backgroundColor: m.cor || colors.primary },
+                  {
+                    width: `${dados.percentualGeral * 100}%`,
+                    backgroundColor: colors.primary,
+                  },
                 ]}
               />
             </View>
+
+            <Text style={styles.progressDescription}>
+              {dados.total === 0
+                ? 'Cadastre tarefas para acompanhar seu progresso.'
+                : `${dados.concluidas} de ${dados.total} tarefas concluídas.`}
+            </Text>
           </Card>
-        ))
+
+          <Text style={styles.sectionTitle}>Próximos compromissos</Text>
+
+          {dados.compromissos.length === 0 ? (
+            <Card>
+              <View style={styles.emptyRow}>
+                <Ionicons
+                  name="happy-outline"
+                  size={22}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.muted}>
+                  Você não tem compromissos pendentes.
+                </Text>
+              </View>
+            </Card>
+          ) : (
+            dados.compromissos.map((item) => {
+              const prazo = new Date(item.prazo);
+              const ehProva = item.tipo === 'prova';
+              const atrasada = diasRestantes(prazo, agora) === 'Atrasada';
+
+              return (
+                <Card key={item.id}>
+                  <View style={styles.provaRow}>
+                    <Ionicons
+                      name={ehProva ? 'school' : 'document-text'}
+                      size={22}
+                      color={ehProva ? colors.danger : colors.primary}
+                    />
+
+                    <View style={styles.flex}>
+                      <Text style={styles.bold}>{item.titulo}</Text>
+
+                      <Text style={styles.muted}>
+                        {ehProva ? 'Prova' : 'Tarefa'} ·{' '}
+                        {dados.nomePorId.get(item.materiaId) ?? 'Matéria'}
+                      </Text>
+
+                      <Text style={styles.muted}>
+                        {prazo.toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                        })}{' '}
+                        às{' '}
+                        {prazo.toLocaleTimeString('pt-BR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+
+                    <Text
+                      style={[
+                        styles.badge,
+                        atrasada && styles.badgeAtrasada,
+                      ]}
+                    >
+                      {diasRestantes(prazo, agora)}
+                    </Text>
+                  </View>
+                </Card>
+              );
+            })
+          )}
+
+          <Text style={styles.sectionTitle}>Progresso por matéria</Text>
+
+          {dados.progresso.length === 0 ? (
+            <Card>
+              <View style={styles.emptyRow}>
+                <Ionicons
+                  name="book-outline"
+                  size={22}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.muted}>
+                  Cadastre matérias para acompanhar o progresso.
+                </Text>
+              </View>
+            </Card>
+          ) : (
+            dados.progresso.map((m) => (
+              <Card key={m.id}>
+                <View style={styles.progressHeader}>
+                  <Text style={styles.bold}>{m.nome}</Text>
+
+                  <Text style={styles.muted}>
+                    {m.feitas}/{m.total} ({Math.round(m.pct * 100)}%)
+                  </Text>
+                </View>
+
+                <View style={styles.barBg}>
+                  <View
+                    style={[
+                      styles.barFill,
+                      {
+                        width: `${m.pct * 100}%`,
+                        backgroundColor: m.cor || colors.primary,
+                      },
+                    ]}
+                  />
+                </View>
+              </Card>
+            ))
+          )}
+        </>
       )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.background },
-  container: { padding: spacing.lg, gap: 12, paddingBottom: 32 },
-  row: { flexDirection: 'row', gap: 12 },
-  stat: { alignItems: 'center', gap: 4, minWidth: 120 },
-  number: { fontSize: 28, fontWeight: '700' },
-  sectionTitle: { fontSize: fontSize.md, fontWeight: '700', marginTop: 8 },
-  muted: { color: colors.textSecondary },
-  bold: { fontWeight: '600' },
-  flex: { flex: 1 },
-  emptyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  provaRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  badge: { color: colors.primary, fontWeight: '700' },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+  scroll: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  container: {
+    padding: spacing.lg,
+    gap: 12,
+    paddingBottom: spacing.xl,
+  },
+  header: {
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  greeting: {
+    fontSize: fontSize.xl,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  subtitle: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+  },
+  loading: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+    gap: spacing.md,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  stat: {
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 120,
+  },
+  number: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  sectionTitle: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: 8,
+  },
+  muted: {
+    color: colors.textSecondary,
+  },
+  bold: {
+    fontWeight: '600',
+    color: colors.text,
+  },
+  flex: {
+    flex: 1,
+  },
+  emptyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  provaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  badge: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  badgeAtrasada: {
+    color: colors.danger,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   barBg: {
     height: 8,
     borderRadius: radius.md,
@@ -234,5 +371,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     overflow: 'hidden',
   },
-  barFill: { height: 8, borderRadius: radius.md },
+  barFill: {
+    height: 8,
+    borderRadius: radius.md,
+  },
+  progressDescription: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    marginTop: 8,
+  },
 });

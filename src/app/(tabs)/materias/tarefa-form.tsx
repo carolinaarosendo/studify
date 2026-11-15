@@ -1,4 +1,4 @@
-//Esta tela é responsável por Ana Clara
+
 import DateTimePicker, {
   DateTimePickerAndroid,
   type DateTimePickerEvent,
@@ -20,18 +20,16 @@ import {
 import { criarTarefa, editarTarefa } from '@/services/tarefasService';
 import type { TipoTarefa } from '@/types';
 import { formatarData, formatarHora } from '@/utils/datas';
+import { formatarTexto } from '@/utils/formatarTexto';
 
 type Erros = { titulo?: string; prazo?: string };
 
-// sugestão inicial: daqui a 1 hora, com os minutos zerados
 function prazoInicial(): Date {
   const d = new Date(Date.now() + 60 * 60 * 1000);
   d.setMinutes(0, 0, 0);
   return d;
 }
 
-// Notificação (Luiza Eduarda): pega o id da tarefa recém-criada,
-// seja qual for o formato que o criarTarefa devolve
 function extrairId(resultado: unknown): string | undefined {
   if (typeof resultado === 'string') return resultado;
   if (resultado && typeof resultado === 'object') {
@@ -60,7 +58,6 @@ export default function TarefaForm() {
   const [pickerIosAberto, setPickerIosAberto] = useState(false);
   const [preenchido, setPreenchido] = useState(false);
 
-  // modo edição: preenche os campos quando a tarefa chega do contexto
   useEffect(() => {
     if (existente && !preenchido) {
       setTitulo(existente.titulo);
@@ -75,7 +72,6 @@ export default function TarefaForm() {
     setErros((e) => ({ ...e, prazo: undefined }));
 
     if (Platform.OS === 'android') {
-      // Android: primeiro a data, depois a hora
       DateTimePickerAndroid.open({
         value: prazo,
         mode: 'date',
@@ -104,7 +100,6 @@ export default function TarefaForm() {
     const novos: Erros = {};
     if (!titulo.trim()) novos.titulo = 'Informe um título.';
 
-    // ao editar sem mexer na data, permite salvar mesmo que ela já tenha passado
     const dataInalterada = editando && !!existente && prazo.getTime() === existente.prazo.getTime();
     if (!dataInalterada && prazo.getTime() < Date.now()) {
       novos.prazo = 'A data e a hora não podem estar no passado.';
@@ -114,14 +109,12 @@ export default function TarefaForm() {
     return Object.keys(novos).length === 0;
   }
 
-  // Notificação (Luiza Eduarda): agenda, reagenda ou cancela o lembrete da prova
-  // e guarda o id da notificação na tarefa. Se falhar, a tarefa continua salva.
-  async function atualizarLembrete(uid: string, idDaTarefa: string) {
+  async function atualizarLembrete(uid: string, idDaTarefa: string, tituloDaTarefa: string) {
     try {
       const idAntigo = existente?.notificacaoId ?? null;
       const config = await obterConfigLembrete(uid);
       const idNovo = await sincronizarLembreteProva(
-        { titulo, tipo, prazo, concluida: existente?.concluida, notificacaoId: idAntigo },
+        { titulo: tituloDaTarefa, tipo, prazo, concluida: existente?.concluida, notificacaoId: idAntigo },
         config,
         materia?.nome,
       );
@@ -129,7 +122,6 @@ export default function TarefaForm() {
         await salvarIdLembrete(uid, idDaTarefa, idNovo);
       }
     } catch {
-      // O lembrete é um extra: um erro aqui não deve impedir o cadastro
     }
   }
 
@@ -140,9 +132,11 @@ export default function TarefaForm() {
       return;
     }
 
+    const tituloFormatado = formatarTexto(titulo);
+
     setSalvando(true);
     try {
-      const dados = { materiaId, titulo, tipo, prazo, observacao };
+      const dados = { materiaId, titulo: tituloFormatado, tipo, prazo, observacao };
       let idDaTarefa: string | undefined = tarefaId;
       if (editando && tarefaId) {
         await editarTarefa(user.uid, tarefaId, dados);
@@ -152,7 +146,7 @@ export default function TarefaForm() {
       }
 
       if (idDaTarefa) {
-        await atualizarLembrete(user.uid, idDaTarefa);
+        await atualizarLembrete(user.uid, idDaTarefa, tituloFormatado);
       }
 
       Alert.alert(
@@ -215,6 +209,7 @@ export default function TarefaForm() {
           setTitulo(texto);
           if (erros.titulo) setErros((e) => ({ ...e, titulo: undefined }));
         }}
+        onBlur={() => setTitulo(formatarTexto(titulo))}
         placeholder="Ex.: Lista de exercícios 3"
         error={erros.titulo}
         maxLength={80}
@@ -235,6 +230,8 @@ export default function TarefaForm() {
           mode="datetime"
           display="spinner"
           locale="pt-BR"
+          themeVariant="light"
+          textColor="#222222"
           onChange={(_evento: DateTimePickerEvent, data?: Date) => {
             if (data) setPrazo(data);
           }}
