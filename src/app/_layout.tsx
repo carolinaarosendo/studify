@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { Loading } from '@/components';
 import { colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { EstudosProvider } from '@/contexts/EstudosContext';
-import { Loading } from '@/components';
+import { ToastProvider } from '@/contexts/ToastContext';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
 function RootNavigator() {
   const { user, loading } = useAuth();
@@ -51,10 +52,12 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <EstudosProvider>
-        <RootNavigator />
-      </EstudosProvider>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <EstudosProvider>
+          <RootNavigator />
+        </EstudosProvider>
+      </AuthProvider>
+    </ToastProvider>
   );
 }
