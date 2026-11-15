@@ -1,7 +1,8 @@
 
 import { colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Tabs, usePathname } from "expo-router";
+import { Tabs, usePathname, useRouter } from "expo-router";
+import { Pressable, Text } from "react-native";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -25,6 +26,7 @@ function tabIcon(active: IconName, inactive: IconName) {
 
 export default function TabsLayout() {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <Tabs
@@ -62,6 +64,44 @@ export default function TabsLayout() {
           title: "Resumo",
           headerShown: pathname === "/resumo",
           tabBarIcon: tabIcon("stats-chart", "stats-chart-outline"),
+        }}
+      />
+      <Tabs.Screen
+        name="perfil"
+        options={{
+          title:
+            pathname === "/perfil/configuracoes"
+              ? "Configurações"
+              : "Perfil",
+          headerShown: true,
+          headerLeft:
+            pathname === "/perfil/configuracoes"
+              ? () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons
+                      name="chevron-back"
+                      size={24}
+                      color={colors.primary}
+                    />
+                    <Text
+                      style={{
+                        color: colors.primary,
+                        fontSize: 16,
+                      }}
+                    >
+                      Voltar
+                    </Text>
+                  </Pressable>
+                )
+              : undefined,
+          tabBarIcon: tabIcon("person", "person-outline"),
         }}
       />
     </Tabs>
