@@ -12,6 +12,11 @@ import { Button, EmptyState, Input, Screen } from '@/components';
 import { colors, fontSize, radius, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEstudos } from '@/hooks/useEstudos';
+import {
+  obterConfigLembrete,
+  salvarIdLembrete,
+  sincronizarLembreteProva,
+} from '@/services/notificacoesService';
 import { criarTarefa, editarTarefa } from '@/services/tarefasService';
 import type { TipoTarefa } from '@/types';
 import { formatarData, formatarHora } from '@/utils/datas';
@@ -23,6 +28,17 @@ function prazoInicial(): Date {
   const d = new Date(Date.now() + 60 * 60 * 1000);
   d.setMinutes(0, 0, 0);
   return d;
+}
+
+// Notificação (Luiza Eduarda): pega o id da tarefa recém-criada,
+// seja qual for o formato que o criarTarefa devolve
+function extrairId(resultado: unknown): string | undefined {
+  if (typeof resultado === 'string') return resultado;
+  if (resultado && typeof resultado === 'object') {
+    const id = (resultado as { id?: unknown }).id;
+    if (typeof id === 'string') return id;
+  }
+  return undefined;
 }
 
 export default function TarefaForm() {
@@ -98,6 +114,25 @@ export default function TarefaForm() {
     return Object.keys(novos).length === 0;
   }
 
+  // Notificação (Luiza Eduarda): agenda, reagenda ou cancela o lembrete da prova
+  // e guarda o id da notificação na tarefa. Se falhar, a tarefa continua salva.
+  async function atualizarLembrete(uid: string, idDaTarefa: string) {
+    try {
+      const idAntigo = existente?.notificacaoId ?? null;
+      const config = await obterConfigLembrete(uid);
+      const idNovo = await sincronizarLembreteProva(
+        { titulo, tipo, prazo, concluida: existente?.concluida, notificacaoId: idAntigo },
+        config,
+        materia?.nome,
+      );
+      if (idNovo !== idAntigo) {
+        await salvarIdLembrete(uid, idDaTarefa, idNovo);
+      }
+    } catch {
+      // O lembrete é um extra: um erro aqui não deve impedir o cadastro
+    }
+  }
+
   async function salvar() {
     if (!validar()) return;
     if (!user || !materiaId) {
@@ -108,11 +143,18 @@ export default function TarefaForm() {
     setSalvando(true);
     try {
       const dados = { materiaId, titulo, tipo, prazo, observacao };
+      let idDaTarefa: string | undefined = tarefaId;
       if (editando && tarefaId) {
         await editarTarefa(user.uid, tarefaId, dados);
       } else {
-        await criarTarefa(user.uid, dados);
+        const resultado: unknown = await criarTarefa(user.uid, dados);
+        idDaTarefa = extrairId(resultado);
       }
+
+      if (idDaTarefa) {
+        await atualizarLembrete(user.uid, idDaTarefa);
+      }
+
       Alert.alert(
         'Tudo certo!',
         editando ? 'As alterações foram salvas.' : tipo === 'prova' ? 'Prova cadastrada.' : 'Tarefa cadastrada.',
