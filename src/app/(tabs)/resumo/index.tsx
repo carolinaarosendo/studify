@@ -1,8 +1,12 @@
-import { Card } from '@/components';
+import { Button, Card } from '@/components';
 import { colors, fontSize, radius, spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { useEstudos } from '@/hooks/useEstudos';
+import { criarMateria } from '@/services/materiasService';
+import { concluirTarefa, criarTarefa } from '@/services/tarefasService';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -18,8 +22,71 @@ function diasRestantes(prazo: Date) {
   return `Em ${dias} dias`;
 }
 
+// Data relativa a hoje: emDias(2, 19) = daqui a 2 dias às 19:00
+function emDias(dias: number, hora: number, minuto = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + dias);
+  d.setHours(hora, minuto, 0, 0);
+  return d;
+}
+
 export default function ResumoScreen() {
   const { materias, tarefas } = useEstudos();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const [carregandoExemplo, setCarregandoExemplo] = useState(false);
+
+  async function carregarDadosExemplo() {
+    if (!user) {
+      showToast('Faça login primeiro.', 'error');
+      return;
+    }
+    setCarregandoExemplo(true);
+    try {
+      const mobile = await criarMateria(user.uid, {
+        nome: 'Dispositivos Móveis',
+        professor: 'Prof. Carlos',
+        cor: '#5C6BC0',
+        diaSemana: 'Segunda',
+        horario: '19:00',
+      });
+      const bd = await criarMateria(user.uid, {
+        nome: 'Banco de Dados',
+        professor: 'Profa. Marina',
+        cor: '#26A69A',
+        diaSemana: 'Terça',
+        horario: '19:00',
+      });
+      const es = await criarMateria(user.uid, {
+        nome: 'Engenharia de Software',
+        professor: 'Prof. Ricardo',
+        cor: '#EF6C00',
+        diaSemana: 'Quarta',
+        horario: '21:00',
+      });
+
+      const exemplos = [
+        { materiaId: mobile.id, titulo: 'Entrega do app Studify', tipo: 'tarefa' as const, prazo: emDias(1, 19), concluida: false },
+        { materiaId: mobile.id, titulo: 'Lista de exercícios 3', tipo: 'tarefa' as const, prazo: emDias(-3, 23), concluida: true },
+        { materiaId: bd.id, titulo: 'Prova 2', tipo: 'prova' as const, prazo: emDias(2, 19), concluida: false },
+        { materiaId: bd.id, titulo: 'Modelagem do projeto', tipo: 'tarefa' as const, prazo: emDias(4, 23), concluida: false },
+        { materiaId: es.id, titulo: 'Prova final', tipo: 'prova' as const, prazo: emDias(4, 21), concluida: false },
+        { materiaId: es.id, titulo: 'Diagrama UML', tipo: 'tarefa' as const, prazo: emDias(-5, 23), concluida: true },
+      ];
+
+      for (const { concluida, ...dados } of exemplos) {
+        const criada = await criarTarefa(user.uid, dados);
+        if (concluida) await concluirTarefa(user.uid, criada.id, true);
+      }
+
+      showToast('Dados de exemplo carregados!');
+    } catch (erro) {
+      console.error(erro);
+      showToast('Erro ao carregar dados de exemplo.', 'error');
+    } finally {
+      setCarregandoExemplo(false);
+    }
+  }
 
   const dados = useMemo(() => {
     const agora = new Date();
@@ -53,6 +120,16 @@ export default function ResumoScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+      {__DEV__ && (
+        <Button
+          title="Carregar dados de exemplo"
+          icon="cloud-upload"
+          variant="secondary"
+          loading={carregandoExemplo}
+          onPress={carregarDadosExemplo}
+        />
+      )}
+
       <View style={styles.row}>
         <Card>
           <View style={styles.stat}>
